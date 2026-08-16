@@ -72,6 +72,8 @@ header{
   cursor:pointer; transition:border-color 0.2s, color 0.2s;
 }
 .header-btn:hover{border-color:var(--teal); color:var(--teal);}
+.header-actions{display:flex; align-items:center; gap:8px;}
+.lang-btn{font-family:var(--mono); font-weight:700; font-size:12px; letter-spacing:0.02em;}
 
 /* ---------- Search / location bar ---------- */
 .search-wrap{
@@ -564,9 +566,12 @@ footer a{color:var(--text-dim);}
     </div>
     <div class="logo-text">Depth<span>.</span></div>
   </div>
-  <button class="header-btn" id="unitToggle" title="Toggle units">
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
-  </button>
+  <div class="header-actions">
+    <button class="header-btn lang-btn" id="langToggle" title="Switch language">EN</button>
+    <button class="header-btn" id="unitToggle" title="Toggle units">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+    </button>
+  </div>
 </header>
 
 <div class="search-wrap">
@@ -585,8 +590,8 @@ footer a{color:var(--text-dim);}
 <main id="mainContent">
   <div class="empty-state" id="emptyState">
     <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12c1.5-3 4-4.5 6-4.5 3 0 3.5 2 6 2s3-2 6-2c1.5 0 3.5 1 4 2.5"/><path d="M2 17c1.5-3 4-4.5 6-4.5 3 0 3.5 2 6 2s3-2 6-2c1.5 0 3.5 1 4 2.5"/></svg>
-    <h2>Find your window</h2>
-    <p>Search a coastline or drop your pin to get a live go / no‑go read before you drive to the water.</p>
+    <h2 id="emptyTitle">Find your window</h2>
+    <p id="emptyBody">Search a coastline or drop your pin to get a live go / no‑go read before you drive to the water.</p>
   </div>
 </main>
 
@@ -603,8 +608,95 @@ const state = {
   selectedDayIndex: 0,
   weatherCache: {},
   logs: JSON.parse(localStorage.getItem('depth_logs') || '{}'),
-  logRating: null
+  logRating: null,
+  lang: localStorage.getItem('depth_lang') || 'en'
 };
+
+// ============= I18N =============
+const STRINGS = {
+  en: {
+    searchPlaceholder:'Search a coast, bay or dive spot…', locateTitle:'Use my location', unitTitle:'Toggle units', langTitle:'Switch language',
+    emptyTitle:'Find your window', emptyBody:'Search a coastline or drop your pin to get a live go / no‑go read before you drive to the water.',
+    loading:'CHECKING CONDITIONS…',
+    noMarineTitle:'No marine data here', noMarineBody:"This looks like an inland spot — there's no wave, current or water temperature data this far from open water. Try a spot directly on the coast.",
+    couldntLoadTitle:"Couldn't load conditions", couldntLoadBody:'An ad blocker or privacy extension may be blocking network requests. Try disabling it for this site, or open in a private window.', retry:'Retry',
+    go:'GO', caution:'CAUTION', nogo:'NO-GO',
+    gaugeGo:'Clean, diveable conditions expected. Light wind and small, long-period swell.',
+    gaugeCaution:'Marginal. Sheltered spots may still fish — check the entry point on arrival.',
+    gaugeNo:'Rough conditions likely. Wind or swell is working against visibility today.',
+    bestWindow:'Best window', sunrise:'Sunrise', sunset:'Sunset', shareBtn:'Share conditions',
+    updatedLabel:'UPDATED', todayLabel:'TODAY', todayShort:'Today',
+    windHead:'WIND', swellHead:'SWELL', waterTempHead:'WATER TEMP', rainHead:'RAIN (24H)', currentHead:'CURRENT', cloudHead:'CLOUD COVER',
+    seaSurface:'Sea surface', runoffRisk:'Runoff may reduce clarity', noRunoff:'No recent runoff', lessLight:'Less light underwater', goodLight:'Good light penetration',
+    gustsLabel:'gusts', periodLabel:'period',
+    outlookLabel:'7-Day Outlook', drivingLabel:"What's driving the score", diveLogLabel:'Dive Log',
+    logSession:'Log this session', noSessions:'No sessions logged yet for this spot.',
+    factorWind:'Wind', factorSwellHeight:'Swell height', factorSwellPeriod:'Swell period', factorRain:'Recent rain', factorCurrent:'Ocean current', factorCloud:'Cloud cover',
+    tagCalm:'CALM', tagModerate:'MODERATE', tagStrong:'STRONG', tagSmall:'SMALL', tagBuilding:'BUILDING', tagLarge:'LARGE',
+    tagGroundswell:'GROUNDSWELL', tagMixed:'MIXED', tagWindChop:'WIND CHOP', tagClear:'CLEAR', tagLightRain:'LIGHT RAIN', tagRunoffRisk:'RUNOFF RISK',
+    tagClearSky:'CLEAR SKY', tagPartlyCloudy:'PARTLY CLOUDY', tagOvercast:'OVERCAST',
+    swellLongClean:'long, clean groundswell', swellShortChop:'short-period wind chop',
+    fromDir:'{val} from the {dir}', rainDetail:'{val}mm in the last 24h', cloudDetail:'{val}% sky covered',
+    footerNote:'This is guidance, not a safety device. Always check conditions on site and dive within your limits.',
+    shareSpearfishing:'SPEARFISHING CONDITIONS', shareUpdatedToday:'UPDATED {time} · TODAY', shareGuidance:'Guidance, not a safety device',
+    preparingImage:'Preparing image…', imageSaved:'Image saved — attach it to your message', couldNotShare:'Could not create the share image', shareTitle:'Depth conditions',
+    spotAdded:'{name} added to your spots', spotRemoved:'{name} removed', confirmRemove:'Remove "{name}" and its dive log entries?',
+    pickRating:'Pick a rating first', sessionLogged:'Session logged',
+    locationNotSupported:'Location not supported on this device',
+    locationNeedsHttps:'Location needs HTTPS — open this app over https:// or localhost',
+    findingPosition:'Finding your position…',
+    locPermDenied:'Location permission denied — allow it in your browser/site settings',
+    locUnavailable:"Couldn't get a GPS fix — turn on Location Services and try again",
+    locTimeout:'Location timed out — move somewhere with a clearer signal and retry',
+    locGeneric:'Could not get your location',
+    blockedBrowser:'Blocked by browser or an extension', noMatches:'No matches found', tryDisableAdblock:'Try disabling ad blockers for this site',
+    currentLocation:'Current location', noVisLogged:'No visibility logged', visSuffix:'vis', predicted:'predicted'
+  },
+  fr: {
+    searchPlaceholder:'Rechercher une côte, une baie ou un spot…', locateTitle:'Utiliser ma position', unitTitle:'Changer les unités', langTitle:'Changer de langue',
+    emptyTitle:'Trouvez votre fenêtre', emptyBody:'Recherchez un littoral ou déposez votre repère pour obtenir une lecture go / no‑go avant de prendre la route.',
+    loading:'VÉRIFICATION DES CONDITIONS…',
+    noMarineTitle:'Aucune donnée marine ici', noMarineBody:"Ce lieu semble être à l'intérieur des terres — aucune donnée de vague, courant ou température de l'eau n'est disponible aussi loin de la mer. Essayez un spot directement sur la côte.",
+    couldntLoadTitle:'Impossible de charger les conditions', couldntLoadBody:"Un bloqueur de publicité ou une extension de confidentialité bloque peut-être les requêtes réseau. Essayez de le désactiver pour ce site, ou ouvrez une fenêtre privée.", retry:'Réessayer',
+    go:'GO', caution:'PRUDENCE', nogo:'NO-GO',
+    gaugeGo:'Conditions propres et plongeables. Vent léger et petite houle longue période.',
+    gaugeCaution:"Marginal. Les spots abrités peuvent encore se prêter à la chasse — vérifiez le point d'entrée sur place.",
+    gaugeNo:"Conditions difficiles probables. Le vent ou la houle nuit à la visibilité aujourd'hui.",
+    bestWindow:'Meilleur créneau', sunrise:'Lever du soleil', sunset:'Coucher du soleil', shareBtn:'Partager les conditions',
+    updatedLabel:'MIS À JOUR', todayLabel:"AUJOURD'HUI", todayShort:"Aujourd'hui",
+    windHead:'VENT', swellHead:'HOULE', waterTempHead:'TEMP. EAU', rainHead:'PLUIE (24H)', currentHead:'COURANT', cloudHead:'COUVERTURE NUAGEUSE',
+    seaSurface:'Surface de la mer', runoffRisk:'Le ruissellement peut réduire la clarté', noRunoff:'Pas de ruissellement récent', lessLight:"Moins de lumière sous l'eau", goodLight:'Bonne pénétration de la lumière',
+    gustsLabel:'rafales', periodLabel:'période',
+    outlookLabel:'Prévisions 7 jours', drivingLabel:'Ce qui influence le score', diveLogLabel:'Journal de plongée',
+    logSession:'Enregistrer cette session', noSessions:'Aucune session enregistrée pour ce spot.',
+    factorWind:'Vent', factorSwellHeight:'Hauteur de houle', factorSwellPeriod:'Période de houle', factorRain:'Pluie récente', factorCurrent:'Courant marin', factorCloud:'Couverture nuageuse',
+    tagCalm:'CALME', tagModerate:'MODÉRÉ', tagStrong:'FORT', tagSmall:'PETITE', tagBuilding:'EN HAUSSE', tagLarge:'GRANDE',
+    tagGroundswell:'HOULE LONGUE', tagMixed:'MIXTE', tagWindChop:'CLAPOT', tagClear:'DÉGAGÉ', tagLightRain:'PLUIE LÉGÈRE', tagRunoffRisk:'RISQUE RUISSELLEMENT',
+    tagClearSky:'CIEL DÉGAGÉ', tagPartlyCloudy:'PARTIELLEMENT NUAGEUX', tagOvercast:'COUVERT',
+    swellLongClean:'houle longue et propre', swellShortChop:'clapot de vent à courte période',
+    fromDir:'{val} venant du {dir}', rainDetail:'{val}mm au cours des dernières 24h', cloudDetail:'{val}% de ciel couvert',
+    footerNote:'Ceci est une indication, pas un dispositif de sécurité. Vérifiez toujours les conditions sur place et plongez dans vos limites.',
+    shareSpearfishing:'CONDITIONS DE CHASSE SOUS-MARINE', shareUpdatedToday:"MIS À JOUR {time} · AUJOURD'HUI", shareGuidance:'Indication, pas un dispositif de sécurité',
+    preparingImage:"Préparation de l'image…", imageSaved:'Image enregistrée — joignez-la à votre message', couldNotShare:"Impossible de créer l'image à partager", shareTitle:'Conditions Depth',
+    spotAdded:'{name} ajouté à vos spots', spotRemoved:'{name} supprimé', confirmRemove:'Supprimer « {name} » et ses entrées de journal ?',
+    pickRating:"Choisissez d'abord une note", sessionLogged:'Session enregistrée',
+    locationNotSupported:'Localisation non prise en charge sur cet appareil',
+    locationNeedsHttps:'La localisation nécessite HTTPS — ouvrez cette app en https:// ou localhost',
+    findingPosition:'Recherche de votre position…',
+    locPermDenied:'Permission de localisation refusée — autorisez-la dans les paramètres de votre navigateur',
+    locUnavailable:"Impossible d'obtenir un signal GPS — activez les services de localisation et réessayez",
+    locTimeout:'Délai de localisation dépassé — déplacez-vous vers un signal plus clair et réessayez',
+    locGeneric:"Impossible d'obtenir votre position",
+    blockedBrowser:'Bloqué par le navigateur ou une extension', noMatches:'Aucun résultat', tryDisableAdblock:'Essayez de désactiver les bloqueurs de publicité pour ce site',
+    currentLocation:'Position actuelle', noVisLogged:'Aucune visibilité enregistrée', visSuffix:'vis', predicted:'prévu'
+  }
+};
+function t(key, vars){
+  let s = (STRINGS[state.lang] && STRINGS[state.lang][key]) ?? STRINGS.en[key] ?? key;
+  if(vars) Object.keys(vars).forEach(k=>{ s = s.replace(`{${k}}`, vars[k]); });
+  return s;
+}
+function locale(){ return state.lang==='fr' ? 'fr-FR' : 'en-US'; }
 
 // ============= UTIL =============
 function toast(msg, ms=2600){
@@ -617,6 +709,7 @@ function toast(msg, ms=2600){
 function saveSpots(){ localStorage.setItem('depth_spots', JSON.stringify(state.spots)); }
 function saveUnits(){ localStorage.setItem('depth_units', JSON.stringify(state.units)); }
 function saveLogs(){ localStorage.setItem('depth_logs', JSON.stringify(state.logs)); }
+function saveLang(){ localStorage.setItem('depth_lang', state.lang); }
 function uid(){ return Math.random().toString(36).slice(2,9); }
 
 function windMsToUnit(ms, unit){
@@ -696,9 +789,9 @@ function scoreConditions({windKt, gustKt, swellM, swellPeriod, precipMm24h, curr
 }
 
 function scoreLabel(score){
-  if(score >= 7) return {label:'GO', class:'go', color:'var(--teal)'};
-  if(score >= 4.5) return {label:'CAUTION', class:'caution', color:'var(--amber)'};
-  return {label:'NO-GO', class:'no', color:'var(--rust)'};
+  if(score >= 7) return {label:t('go'), class:'go', color:'var(--teal)'};
+  if(score >= 4.5) return {label:t('caution'), class:'caution', color:'var(--amber)'};
+  return {label:t('nogo'), class:'no', color:'var(--rust)'};
 }
 
 // ============= API CALLS =============
@@ -990,10 +1083,10 @@ function getSpotLogs(spotId){
 
 function renderLogEntry(entry, waveUnitLabel){
   const d = new Date(entry.ts);
-  const dateStr = d.toLocaleDateString('en-US',{month:'short', day:'numeric'}) + ' · ' + d.toLocaleTimeString('en-US',{hour:'numeric', minute:'2-digit'});
+  const dateStr = d.toLocaleDateString(locale(),{month:'short', day:'numeric'}) + ' · ' + d.toLocaleTimeString(locale(),{hour:'numeric', minute:'2-digit'});
   const visStr = (entry.visibility!==null && entry.visibility!==undefined && entry.visibility!=='')
-    ? `${fmt(entry.visibility,1)} ${entry.unit} vis`
-    : 'No visibility logged';
+    ? `${fmt(entry.visibility,1)} ${entry.unit} ${t('visSuffix')}`
+    : t('noVisLogged');
   return `<div class="log-entry" data-log-id="${entry.id}">
     <div class="log-entry-dot ${entry.rating}"></div>
     <div class="log-entry-body">
@@ -1001,7 +1094,7 @@ function renderLogEntry(entry, waveUnitLabel){
         <div class="log-entry-date">${dateStr}</div>
         <button class="log-entry-delete" data-delete-id="${entry.id}" title="Delete entry">${factorIcon('trash')}</button>
       </div>
-      <div class="log-entry-meta">${visStr} · predicted ${fmt(entry.predictedScore,1)}/10</div>
+      <div class="log-entry-meta">${visStr} · ${t('predicted')} ${fmt(entry.predictedScore,1)}/10</div>
       ${entry.notes ? `<div class="log-entry-notes">${escapeHtml(entry.notes)}</div>` : ''}
     </div>
   </div>`;
@@ -1017,12 +1110,12 @@ function renderLogSection(spot, selDay, waveUnitLabel){
   const entries = getSpotLogs(spot.id);
   const entriesHtml = entries.length
     ? entries.map(e=>renderLogEntry(e, waveUnitLabel)).join('')
-    : `<div class="log-empty">No sessions logged yet for this spot.</div>`;
+    : `<div class="log-empty">${t('noSessions')}</div>`;
 
   return `
-    <div class="section-label">Dive Log</div>
+    <div class="section-label">${t('diveLogLabel')}</div>
     <div class="log-card">
-      <button class="log-toggle" id="logToggleBtn">${factorIcon('log')} Log this session</button>
+      <button class="log-toggle" id="logToggleBtn">${factorIcon('log')} ${t('logSession')}</button>
       <div class="log-form hidden" id="logForm">
         <div class="log-form-row">
           <label>Visibility</label>
@@ -1075,7 +1168,7 @@ function bindLogSection(spot, selDay){
     });
   });
   saveBtn.addEventListener('click', ()=>{
-    if(!state.logRating){ toast('Pick a rating first'); return; }
+    if(!state.logRating){ toast(t('pickRating')); return; }
     const visRaw = document.getElementById('logVisibility').value;
     const notes = document.getElementById('logNotes').value.trim();
     const entry = {
@@ -1090,7 +1183,7 @@ function bindLogSection(spot, selDay){
     if(!state.logs[spot.id]) state.logs[spot.id] = [];
     state.logs[spot.id].push(entry);
     saveLogs();
-    toast('Session logged');
+    toast(t('sessionLogged'));
     renderSpotView(spot, state.weatherCache[spot.id]);
   });
 
@@ -1115,7 +1208,7 @@ function renderSpotView(spot, data){
     if(p) days.push(p);
   }
   if(days.length===0){
-    container.innerHTML = `<div class="empty-state"><h2>No marine data here</h2><p>This looks like an inland spot — there's no wave, current or water temperature data this far from open water. Try a spot directly on the coast.</p></div>`;
+    container.innerHTML = `<div class="empty-state"><h2>${t('noMarineTitle')}</h2><p>${t('noMarineBody')}</p></div>`;
     return;
   }
 
@@ -1133,21 +1226,21 @@ function renderSpotView(spot, data){
   const currentDisplay = windMsToUnit(selDay.currentMs, state.units.wind);
 
   const bestTime = new Date(selDay.best.time);
-  const bestTimeStr = bestTime.toLocaleTimeString('en-US',{hour:'numeric', minute:'2-digit'});
-  const sunriseStr = selDay.sunrise ? new Date(selDay.sunrise).toLocaleTimeString('en-US',{hour:'numeric', minute:'2-digit'}) : '—';
-  const sunsetStr = selDay.sunset ? new Date(selDay.sunset).toLocaleTimeString('en-US',{hour:'numeric', minute:'2-digit'}) : '—';
+  const bestTimeStr = bestTime.toLocaleTimeString(locale(),{hour:'numeric', minute:'2-digit'});
+  const sunriseStr = selDay.sunrise ? new Date(selDay.sunrise).toLocaleTimeString(locale(),{hour:'numeric', minute:'2-digit'}) : '—';
+  const sunsetStr = selDay.sunset ? new Date(selDay.sunset).toLocaleTimeString(locale(),{hour:'numeric', minute:'2-digit'}) : '—';
 
-  const dayNames = days.map(d=>d.date.toLocaleDateString('en-US',{weekday:'short'}));
+  const dayNames = days.map(d=>d.date.toLocaleDateString(locale(),{weekday:'short'}));
   const isToday = state.selectedDayIndex===0;
 
   // factor evaluations
-  const windEval = selDay.windKt<=10 ? {cls:'go',tag:'CALM'} : selDay.windKt<=16 ? {cls:'caution',tag:'MODERATE'} : {cls:'no',tag:'STRONG'};
-  const swellEval = selDay.swellM<=0.6 ? {cls:'go',tag:'SMALL'} : selDay.swellM<=1.3 ? {cls:'caution',tag:'BUILDING'} : {cls:'no',tag:'LARGE'};
-  const periodEval = selDay.swellPeriod>=9 ? {cls:'go',tag:'GROUNDSWELL'} : selDay.swellPeriod>=7 ? {cls:'caution',tag:'MIXED'} : {cls:'no',tag:'WIND CHOP'};
-  const rainEval = selDay.precipMm24h<=2 ? {cls:'go',tag:'CLEAR'} : selDay.precipMm24h<=8 ? {cls:'caution',tag:'LIGHT RAIN'} : {cls:'no',tag:'RUNOFF RISK'};
+  const windEval = selDay.windKt<=10 ? {cls:'go',tag:t('tagCalm')} : selDay.windKt<=16 ? {cls:'caution',tag:t('tagModerate')} : {cls:'no',tag:t('tagStrong')};
+  const swellEval = selDay.swellM<=0.6 ? {cls:'go',tag:t('tagSmall')} : selDay.swellM<=1.3 ? {cls:'caution',tag:t('tagBuilding')} : {cls:'no',tag:t('tagLarge')};
+  const periodEval = selDay.swellPeriod>=9 ? {cls:'go',tag:t('tagGroundswell')} : selDay.swellPeriod>=7 ? {cls:'caution',tag:t('tagMixed')} : {cls:'no',tag:t('tagWindChop')};
+  const rainEval = selDay.precipMm24h<=2 ? {cls:'go',tag:t('tagClear')} : selDay.precipMm24h<=8 ? {cls:'caution',tag:t('tagLightRain')} : {cls:'no',tag:t('tagRunoffRisk')};
   const currentKt = windMsToUnit(selDay.currentMs, 'kt');
-  const currentEval = currentKt<=0.6 ? {cls:'go',tag:'CALM'} : currentKt<=1.2 ? {cls:'caution',tag:'MODERATE'} : {cls:'no',tag:'STRONG'};
-  const cloudEval = selDay.cloudCoverPct<=40 ? {cls:'go',tag:'CLEAR SKY'} : selDay.cloudCoverPct<=70 ? {cls:'caution',tag:'PARTLY CLOUDY'} : {cls:'no',tag:'OVERCAST'};
+  const currentEval = currentKt<=0.6 ? {cls:'go',tag:t('tagCalm')} : currentKt<=1.2 ? {cls:'caution',tag:t('tagModerate')} : {cls:'no',tag:t('tagStrong')};
+  const cloudEval = selDay.cloudCoverPct<=40 ? {cls:'go',tag:t('tagClearSky')} : selDay.cloudCoverPct<=70 ? {cls:'caution',tag:t('tagPartlyCloudy')} : {cls:'no',tag:t('tagOvercast')};
 
   // Decorative wave amplitude scales with actual swell height (in SVG units,
   // 40-tall viewBox) so a flat 0.1m day shows a near-flat line, not a big wave.
@@ -1157,7 +1250,7 @@ function renderSpotView(spot, data){
   container.innerHTML = `
     <div class="location-title">
       <h1>${spot.name}</h1>
-      <div class="updated">UPDATED ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} · ${isToday?'TODAY':dayNames[state.selectedDayIndex].toUpperCase()+' · '+selDay.date.toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+      <div class="updated">${t('updatedLabel')} ${new Date().toLocaleTimeString(locale(),{hour:'numeric',minute:'2-digit'})} · ${isToday?t('todayLabel'):dayNames[state.selectedDayIndex].toUpperCase()+' · '+selDay.date.toLocaleDateString(locale(),{month:'short',day:'numeric'})}</div>
     </div>
 
     <div class="gauge-section">
@@ -1165,15 +1258,15 @@ function renderSpotView(spot, data){
       <div class="gauge-sub">${gaugeMessage(selDay, cls)}</div>
       <div class="best-window">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-        <span>Best window</span> <b>${bestTimeStr}</b>
+        <span>${t('bestWindow')}</span> <b>${bestTimeStr}</b>
       </div>
       <div class="sun-times">
-        <div class="sun-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v3M4.2 6.2l1.4 1.4M2 13h3M19 13h3M18.4 7.6l1.4-1.4M6 18a6 6 0 0 1 12 0"/></svg> Sunrise <b>${sunriseStr}</b></div>
-        <div class="sun-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v3M4.2 6.2l1.4 1.4M2 13h3M19 13h3M18.4 7.6l1.4-1.4M6 18a6 6 0 0 1 12 0M2 21h20"/></svg> Sunset <b>${sunsetStr}</b></div>
+        <div class="sun-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v3M4.2 6.2l1.4 1.4M2 13h3M19 13h3M18.4 7.6l1.4-1.4M6 18a6 6 0 0 1 12 0"/></svg> ${t('sunrise')} <b>${sunriseStr}</b></div>
+        <div class="sun-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v3M4.2 6.2l1.4 1.4M2 13h3M19 13h3M18.4 7.6l1.4-1.4M6 18a6 6 0 0 1 12 0M2 21h20"/></svg> ${t('sunset')} <b>${sunsetStr}</b></div>
       </div>
       <button class="share-btn" id="shareBtn">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6M16 6l-4-4-4 4M12 2v14"/></svg>
-        Share conditions
+        ${t('shareBtn')}
       </button>
     </div>
 
@@ -1184,48 +1277,48 @@ function renderSpotView(spot, data){
           <span class="wind-streak"></span>
           <span class="wind-streak"></span>
         </div>
-        <div class="instrument-head">${factorIcon('wind')} WIND</div>
+        <div class="instrument-head">${factorIcon('wind')} ${t('windHead')}</div>
         <div class="instrument-value">${fmt(windDisplay,0)}<span class="unit">${windUnitLabel}</span></div>
-        <div class="instrument-detail">${windCompassIcon(selDay.windDir)} ${degToCompass(selDay.windDir)} · gusts ${fmt(gustDisplay,0)} ${windUnitLabel}</div>
+        <div class="instrument-detail">${windCompassIcon(selDay.windDir)} ${degToCompass(selDay.windDir)} · ${t('gustsLabel')} ${fmt(gustDisplay,0)} ${windUnitLabel}</div>
       </div>
       <div class="instrument swell-instrument">
         <svg class="wave-bg" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true">
           <path d="M0 20 Q 6.25 ${waveTopY} 12.5 20 T 25 20 T 37.5 20 T 50 20 T 62.5 20 T 75 20 T 87.5 20 T 100 20 T 112.5 20 T 125 20 T 137.5 20 T 150 20 T 162.5 20 T 175 20 T 187.5 20 T 200 20 T 212.5 20 T 225 20 T 237.5 20 T 250 20 T 262.5 20 T 275 20 T 287.5 20 T 300 20 T 312.5 20 T 325 20 T 337.5 20 T 350 20 T 362.5 20 T 375 20 T 387.5 20 T 400 20" fill="none" stroke="rgba(63,167,150,0.4)" stroke-width="2"/>
         </svg>
-        <div class="instrument-head">${factorIcon('swell')} SWELL</div>
+        <div class="instrument-head">${factorIcon('swell')} ${t('swellHead')}</div>
         <div class="instrument-value">${fmt(swellDisplay,1)}<span class="unit">${waveUnitLabel}</span></div>
-        <div class="instrument-detail">${degToCompass(selDay.swellDir)} · ${fmt(selDay.swellPeriod,0)}s period</div>
+        <div class="instrument-detail">${degToCompass(selDay.swellDir)} · ${fmt(selDay.swellPeriod,0)}s ${t('periodLabel')}</div>
       </div>
       <div class="instrument">
-        <div class="instrument-head">🌡 WATER TEMP</div>
+        <div class="instrument-head">🌡 ${t('waterTempHead')}</div>
         <div class="instrument-value">${fmt(sstDisplay,1)}<span class="unit">${tempUnitLabel}</span></div>
-        <div class="instrument-detail">Sea surface</div>
+        <div class="instrument-detail">${t('seaSurface')}</div>
       </div>
       <div class="instrument">
-        <div class="instrument-head">${factorIcon('rain')} RAIN (24H)</div>
+        <div class="instrument-head">${factorIcon('rain')} ${t('rainHead')}</div>
         <div class="instrument-value">${fmt(selDay.precipMm24h,0)}<span class="unit">mm</span></div>
-        <div class="instrument-detail">${selDay.precipMm24h>2?'Runoff may reduce clarity':'No recent runoff'}</div>
+        <div class="instrument-detail">${selDay.precipMm24h>2?t('runoffRisk'):t('noRunoff')}</div>
       </div>
       <div class="instrument">
-        <div class="instrument-head">${factorIcon('current')} CURRENT</div>
+        <div class="instrument-head">${factorIcon('current')} ${t('currentHead')}</div>
         <div class="instrument-value">${fmt(currentDisplay,1)}<span class="unit">${windUnitLabel}</span></div>
         <div class="instrument-detail">${windCompassIcon(selDay.currentDir)} ${degToCompass(selDay.currentDir)}</div>
       </div>
       <div class="instrument cloud-instrument">
         <div class="cloud-drift cloud-a" style="opacity:${Math.min(0.15+selDay.cloudCoverPct/180,0.55).toFixed(2)}"></div>
         <div class="cloud-drift cloud-b" style="opacity:${Math.min(0.1+selDay.cloudCoverPct/220,0.45).toFixed(2)}"></div>
-        <div class="instrument-head">${factorIcon('cloud')} CLOUD COVER</div>
+        <div class="instrument-head">${factorIcon('cloud')} ${t('cloudHead')}</div>
         <div class="instrument-value">${fmt(selDay.cloudCoverPct,0)}<span class="unit">%</span></div>
-        <div class="instrument-detail">${selDay.cloudCoverPct>60?'Less light underwater':'Good light penetration'}</div>
+        <div class="instrument-detail">${selDay.cloudCoverPct>60?t('lessLight'):t('goodLight')}</div>
       </div>
     </div>
 
-    <div class="section-label">7-Day Outlook</div>
+    <div class="section-label">${t('outlookLabel')}</div>
     <div class="forecast-strip">
       <div class="forecast-strip-inner">
         ${days.map((d,i)=>`
           <div class="day-col ${i===state.selectedDayIndex?'selected':''}" data-day-idx="${i}">
-            <div class="day-name">${i===0?'Today':dayNames[i]}</div>
+            <div class="day-name">${i===0?t('todayShort'):dayNames[i]}</div>
             <div class="day-dial-wrap">
               <div class="day-dial">${miniDial(d.avgScore)}</div>
               ${d.avgScore>=7 ? `<div class="day-go-badge" title="GO day"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>` : ''}
@@ -1236,14 +1329,14 @@ function renderSpotView(spot, data){
       </div>
     </div>
 
-    <div class="section-label">What's driving the score</div>
+    <div class="section-label">${t('drivingLabel')}</div>
     <div class="factors">
-      ${factorRow('wind','Wind', `${fmt(windDisplay,0)} ${windUnitLabel} from the ${degToCompass(selDay.windDir)} ${windCompassIcon(selDay.windDir)}`, windEval.tag, windEval.cls)}
-      ${factorRow('swell','Swell height', `${fmt(swellDisplay,1)} ${waveUnitLabel} from the ${degToCompass(selDay.swellDir)}`, swellEval.tag, swellEval.cls)}
-      ${factorRow('period','Swell period', `${fmt(selDay.swellPeriod,0)}s — ${selDay.swellPeriod>=9?'long, clean groundswell':'short-period wind chop'}`, periodEval.tag, periodEval.cls)}
-      ${factorRow('rain','Recent rain', `${fmt(selDay.precipMm24h,0)}mm in the last 24h`, rainEval.tag, rainEval.cls)}
-      ${factorRow('current','Ocean current', `${fmt(currentDisplay,1)} ${windUnitLabel} from the ${degToCompass(selDay.currentDir)} ${windCompassIcon(selDay.currentDir)}`, currentEval.tag, currentEval.cls)}
-      ${factorRow('cloud','Cloud cover', `${fmt(selDay.cloudCoverPct,0)}% sky covered`, cloudEval.tag, cloudEval.cls)}
+      ${factorRow('wind',t('factorWind'), `${t('fromDir',{val:`${fmt(windDisplay,0)} ${windUnitLabel}`, dir:degToCompass(selDay.windDir)})} ${windCompassIcon(selDay.windDir)}`, windEval.tag, windEval.cls)}
+      ${factorRow('swell',t('factorSwellHeight'), t('fromDir',{val:`${fmt(swellDisplay,1)} ${waveUnitLabel}`, dir:degToCompass(selDay.swellDir)}), swellEval.tag, swellEval.cls)}
+      ${factorRow('period',t('factorSwellPeriod'), `${fmt(selDay.swellPeriod,0)}s — ${selDay.swellPeriod>=9?t('swellLongClean'):t('swellShortChop')}`, periodEval.tag, periodEval.cls)}
+      ${factorRow('rain',t('factorRain'), t('rainDetail',{val:fmt(selDay.precipMm24h,0)}), rainEval.tag, rainEval.cls)}
+      ${factorRow('current',t('factorCurrent'), `${t('fromDir',{val:`${fmt(currentDisplay,1)} ${windUnitLabel}`, dir:degToCompass(selDay.currentDir)})} ${windCompassIcon(selDay.currentDir)}`, currentEval.tag, currentEval.cls)}
+      ${factorRow('cloud',t('factorCloud'), t('cloudDetail',{val:fmt(selDay.cloudCoverPct,0)}), cloudEval.tag, cloudEval.cls)}
     </div>
 
     ${renderLogSection(spot, selDay, waveUnitLabel)}
@@ -1267,13 +1360,13 @@ function renderSpotView(spot, data){
 
   bindLogSection(spot, selDay);
 
-  document.getElementById('footerNote').innerHTML = `This is guidance, not a safety device. Always check conditions on site and dive within your limits.`;
+  document.getElementById('footerNote').innerHTML = t('footerNote');
 }
 
 function gaugeMessage(day, cls){
-  if(cls==='go') return `Clean, diveable conditions expected. Light wind and small, long-period swell.`;
-  if(cls==='caution') return `Marginal. Sheltered spots may still fish — check the entry point on arrival.`;
-  return `Rough conditions likely. Wind or swell is working against visibility today.`;
+  if(cls==='go') return t('gaugeGo');
+  if(cls==='caution') return t('gaugeCaution');
+  return t('gaugeNo');
 }
 
 // ============= SHARE (canvas-rendered conditions card) =============
@@ -1315,7 +1408,7 @@ async function buildShareCardBlob(spot, selDay, cls, label, stats){
   ctx.fillText('Depth.', 150, 88);
   ctx.font = '13px "JetBrains Mono", monospace';
   ctx.fillStyle = '#8FA8A8';
-  ctx.fillText('SPEARFISHING CONDITIONS', 150, 122);
+  ctx.fillText(t('shareSpearfishing'), 150, 122);
 
   // spot name + timestamp
   ctx.textAlign = 'center';
@@ -1324,7 +1417,7 @@ async function buildShareCardBlob(spot, selDay, cls, label, stats){
   wrapCanvasText(ctx, spot.name, W/2, 235, W-180, 46);
   ctx.font = '13px "JetBrains Mono", monospace';
   ctx.fillStyle = '#8FA8A8';
-  ctx.fillText(`UPDATED ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} · TODAY`, W/2, 296);
+  ctx.fillText(t('shareUpdatedToday',{time:new Date().toLocaleTimeString(locale(),{hour:'numeric',minute:'2-digit'})}), W/2, 296);
 
   // score ring
   const cx = W/2, cy = 540, r = 210;
@@ -1345,10 +1438,10 @@ async function buildShareCardBlob(spot, selDay, cls, label, stats){
 
   // stat cards (2x2)
   const cards = [
-    {k:'WIND', v:`${fmt(stats.windDisplay,0)} ${stats.windUnitLabel}`, d:degToCompass(selDay.windDir)},
-    {k:'SWELL', v:`${fmt(stats.swellDisplay,1)} ${stats.waveUnitLabel}`, d:`${fmt(selDay.swellPeriod,0)}s period`},
-    {k:'WATER TEMP', v:`${fmt(stats.sstDisplay,1)} ${stats.tempUnitLabel}`, d:'Sea surface'},
-    {k:'CURRENT', v:`${fmt(stats.currentDisplay,1)} ${stats.windUnitLabel}`, d:degToCompass(selDay.currentDir)}
+    {k:t('windHead'), v:`${fmt(stats.windDisplay,0)} ${stats.windUnitLabel}`, d:degToCompass(selDay.windDir)},
+    {k:t('swellHead'), v:`${fmt(stats.swellDisplay,1)} ${stats.waveUnitLabel}`, d:`${fmt(selDay.swellPeriod,0)}s ${t('periodLabel')}`},
+    {k:t('waterTempHead'), v:`${fmt(stats.sstDisplay,1)} ${stats.tempUnitLabel}`, d:t('seaSurface')},
+    {k:t('currentHead'), v:`${fmt(stats.currentDisplay,1)} ${stats.windUnitLabel}`, d:degToCompass(selDay.currentDir)}
   ];
   const gridTop = 830, cardW = 470, cardH = 150, gap = 24;
   const gridLeft = (W - (cardW*2+gap))/2;
@@ -1377,7 +1470,7 @@ async function buildShareCardBlob(spot, selDay, cls, label, stats){
   ctx.textAlign = 'center';
   ctx.font = '12px "JetBrains Mono", monospace';
   ctx.fillStyle = '#8FA8A8';
-  ctx.fillText('Guidance, not a safety device', W/2, H-40);
+  ctx.fillText(t('shareGuidance'), W/2, H-40);
 
   return new Promise(resolve=>canvas.toBlob(resolve, 'image/png'));
 }
@@ -1408,23 +1501,23 @@ function roundRectPath(ctx, x, y, w, h, r){
 async function shareConditions(btn, spot, selDay, cls, label, stats){
   const originalHtml = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = 'Preparing image…';
+  btn.innerHTML = t('preparingImage');
   try{
     const blob = await buildShareCardBlob(spot, selDay, cls, label, stats);
     const fileName = `depth-${spot.name.replace(/[^a-z0-9]+/gi,'-').toLowerCase()}.png`;
     const file = new File([blob], fileName, {type:'image/png'});
     if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:'Depth conditions', text:`${spot.name} — ${fmt(selDay.avgScore,1)}/10 ${label}`});
+      await navigator.share({files:[file], title:t('shareTitle'), text:`${spot.name} — ${fmt(selDay.avgScore,1)}/10 ${label}`});
     }else{
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = fileName;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-      toast('Image saved — attach it to your message');
+      toast(t('imageSaved'));
     }
   }catch(err){
-    if(err.name !== 'AbortError') toast('Could not create the share image');
+    if(err.name !== 'AbortError') toast(t('couldNotShare'));
   }finally{
     btn.disabled = false;
     btn.innerHTML = originalHtml;
@@ -1444,7 +1537,7 @@ function renderLoading(){
         <g class="sweep"><line x1="60" y1="60" x2="60" y2="18" stroke="#3FA796" stroke-width="2.5" stroke-linecap="round"/></g>
         <circle cx="60" cy="60" r="4" fill="#3FA796"/>
       </svg>
-      <div class="loading-text">READING THE WATER…</div>
+      <div class="loading-text">${t('loading')}</div>
     </div>`;
 }
 
@@ -1464,11 +1557,11 @@ async function loadSpot(spot, opts){
   }catch(err){
     document.getElementById('mainContent').innerHTML = `
       <div class="empty-state">
-        <h2>Couldn't load conditions</h2>
-        <p>An ad blocker or privacy extension may be blocking network requests. Try disabling it for this site, or open in a private window.</p>
-        <button class="retry-btn" id="retryBtn">Retry</button>
+        <h2>${t('couldntLoadTitle')}</h2>
+        <p>${t('couldntLoadBody')}</p>
+        <button class="retry-btn" id="retryBtn">${t('retry')}</button>
       </div>`;
-    toast('Blocked by browser or an extension');
+    toast(t('blockedBrowser'));
     document.getElementById('retryBtn').addEventListener('click', ()=>loadSpot(spot));
   }
 }
@@ -1520,7 +1613,7 @@ function renderSpotsRow(){
 function deleteSpot(spotId){
   const spot = state.spots.find(s=>s.id===spotId);
   if(!spot) return;
-  if(!confirm(`Remove "${spot.name}" and its dive log entries?`)) return;
+  if(!confirm(t('confirmRemove',{name:spot.name}))) return;
   state.spots = state.spots.filter(s=>s.id!==spotId);
   delete state.weatherCache[spotId];
   delete state.logs[spotId];
@@ -1534,13 +1627,13 @@ function deleteSpot(spotId){
       document.getElementById('mainContent').innerHTML = `
         <div class="empty-state" id="emptyState">
           <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12c1.5-3 4-4.5 6-4.5 3 0 3.5 2 6 2s3-2 6-2c1.5 0 3.5 1 4 2.5"/><path d="M2 17c1.5-3 4-4.5 6-4.5 3 0 3.5 2 6 2s3-2 6-2c1.5 0 3.5 1 4 2.5"/></svg>
-          <h2>Find your window</h2>
-          <p>Search a coastline or drop your pin to get a live go / no‑go read before you drive to the water.</p>
+          <h2 id="emptyTitle">${t('emptyTitle')}</h2>
+          <p id="emptyBody">${t('emptyBody')}</p>
         </div>`;
     }
   }
   renderSpotsRow();
-  toast(`${spot.name} removed`);
+  toast(t('spotRemoved',{name:spot.name}));
 }
 
 // ============= SEARCH =============
@@ -1554,7 +1647,7 @@ document.getElementById('searchInput').addEventListener('input', (e)=>{
     try{
       const results = await geocodeSearch(q);
       if(results.length===0){
-        resultsEl.innerHTML = `<div class="search-result-item"><span class="name" style="color:var(--text-dim)">No matches found</span></div>`;
+        resultsEl.innerHTML = `<div class="search-result-item"><span class="name" style="color:var(--text-dim)">${t('noMatches')}</span></div>`;
         resultsEl.classList.add('show');
         return;
       }
@@ -1572,7 +1665,7 @@ document.getElementById('searchInput').addEventListener('input', (e)=>{
         });
       });
     }catch(err){
-      resultsEl.innerHTML = `<div class="search-result-item"><span class="name" style="color:var(--rust)">Blocked by browser or an extension</span><span class="region">Try disabling ad blockers for this site</span></div>`;
+      resultsEl.innerHTML = `<div class="search-result-item"><span class="name" style="color:var(--rust)">${t('blockedBrowser')}</span><span class="region">${t('tryDisableAdblock')}</span></div>`;
       resultsEl.classList.add('show');
     }
   }, 380);
@@ -1592,31 +1685,52 @@ function addSpot(name, lat, lon){
   saveSpots();
   renderSpotsRow();
   loadSpot(spot);
-  toast(`${name} added to your spots`);
+  toast(t('spotAdded',{name}));
 }
 
 // ============= GEOLOCATION =============
 document.getElementById('locateBtn').addEventListener('click', ()=>{
-  if(!navigator.geolocation){ toast('Location not supported on this device'); return; }
+  if(!navigator.geolocation){ toast(t('locationNotSupported')); return; }
   // Geolocation is only available on HTTPS (or localhost) — over plain http
   // on a LAN IP (e.g. testing from a phone against a dev server) the browser
   // blocks it outright before it ever prompts for permission.
   if(!window.isSecureContext){
-    toast('Location needs HTTPS — open this app over https:// or localhost', 4200);
+    toast(t('locationNeedsHttps'), 4200);
     return;
   }
-  toast('Finding your position…', 1500);
+  toast(t('findingPosition'), 1500);
   navigator.geolocation.getCurrentPosition(async (pos)=>{
     const {latitude, longitude} = pos.coords;
-    addSpot('Current location', latitude, longitude);
+    addSpot(t('currentLocation'), latitude, longitude);
   }, (err)=>{
     let msg;
-    if(err.code===err.PERMISSION_DENIED) msg = 'Location permission denied — allow it in your browser/site settings';
-    else if(err.code===err.POSITION_UNAVAILABLE) msg = "Couldn't get a GPS fix — turn on Location Services and try again";
-    else if(err.code===err.TIMEOUT) msg = 'Location timed out — move somewhere with a clearer signal and retry';
-    else msg = 'Could not get your location';
+    if(err.code===err.PERMISSION_DENIED) msg = t('locPermDenied');
+    else if(err.code===err.POSITION_UNAVAILABLE) msg = t('locUnavailable');
+    else if(err.code===err.TIMEOUT) msg = t('locTimeout');
+    else msg = t('locGeneric');
     toast(msg, 4200);
   }, {enableHighAccuracy:true, timeout:15000, maximumAge:60000});
+});
+
+// ============= LANGUAGE TOGGLE =============
+function applyStaticTranslations(){
+  document.getElementById('langToggle').textContent = state.lang.toUpperCase();
+  document.getElementById('langToggle').title = t('langTitle');
+  document.getElementById('unitToggle').title = t('unitTitle');
+  document.getElementById('searchInput').placeholder = t('searchPlaceholder');
+  document.getElementById('locateBtn').title = t('locateTitle');
+  const emptyTitle = document.getElementById('emptyTitle');
+  const emptyBody = document.getElementById('emptyBody');
+  if(emptyTitle) emptyTitle.textContent = t('emptyTitle');
+  if(emptyBody) emptyBody.textContent = t('emptyBody');
+  document.getElementById('footerNote').innerHTML = t('footerNote');
+}
+document.getElementById('langToggle').addEventListener('click', ()=>{
+  state.lang = state.lang==='en' ? 'fr' : 'en';
+  saveLang();
+  applyStaticTranslations();
+  const spot = state.spots.find(s=>s.id===state.activeSpot);
+  if(spot && state.weatherCache[spot.id]) renderSpotView(spot, state.weatherCache[spot.id]);
 });
 
 // ============= UNIT TOGGLE =============
@@ -1662,11 +1776,11 @@ document.addEventListener('visibilitychange', ()=>{
 
 // ============= INIT =============
 function init(){
+  applyStaticTranslations();
   renderSpotsRow();
   if(state.spots.length > 0){
     loadSpot(state.spots[0]);
   }
-  document.getElementById('footerNote').innerHTML = `This is guidance, not a safety device. Always check conditions on site and dive within your limits.`;
 
   // register service worker for PWA installability (best-effort)
   if('serviceWorker' in navigator){
