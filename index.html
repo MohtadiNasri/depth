@@ -904,6 +904,23 @@ function gaugeArcSegments(){
   }
   return out;
 }
+// Same center/radius/angle-range technique as gaugeArcSegments(), scaled down
+// for the loading spinner — a gradient stroked onto a curved path skews
+// (the bug we fixed on the real gauge), so this reuses per-segment coloring instead.
+function loadingArcSegments(){
+  const N = 32, r = 52, cx = 60, cy = 60;
+  let out = '';
+  for(let i=0;i<N;i++){
+    const t0 = i/N, t1 = (i+1)/N;
+    const a0 = (-110 + t0*220) * Math.PI/180;
+    const a1 = (-110 + t1*220) * Math.PI/180;
+    const x0 = cx + r*Math.sin(a0), y0 = cy - r*Math.cos(a0);
+    const x1 = cx + r*Math.sin(a1), y1 = cy - r*Math.cos(a1);
+    const color = gaugeArcColor((t0+t1)/2);
+    out += `<line x1="${x0.toFixed(2)}" y1="${y0.toFixed(2)}" x2="${x1.toFixed(2)}" y2="${y1.toFixed(2)}" stroke="${color}" stroke-width="4" stroke-linecap="round"/>`;
+  }
+  return out;
+}
 
 // Animates the main gauge needle sweeping up from zero and the score
 // counting up, like a car speedometer settling on a reading. Called once
@@ -1530,10 +1547,7 @@ function renderLoading(){
     <div class="loading-screen">
       <svg class="loading-gauge" viewBox="0 0 120 120">
         <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(232,237,233,0.08)" stroke-width="2"/>
-        <path d="M 22 90 A 52 52 0 1 1 98 90" fill="none" stroke="url(#lg)" stroke-width="4" stroke-linecap="round"/>
-        <defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#C4553D"/><stop offset="50%" stop-color="#D4A24C"/><stop offset="100%" stop-color="#3FA796"/>
-        </linearGradient></defs>
+        ${loadingArcSegments()}
         <g class="sweep"><line x1="60" y1="60" x2="60" y2="18" stroke="#3FA796" stroke-width="2.5" stroke-linecap="round"/></g>
         <circle cx="60" cy="60" r="4" fill="#3FA796"/>
       </svg>
