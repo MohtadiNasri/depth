@@ -902,11 +902,20 @@ function processDay(marine, weather, dayOffset){
   targetDate.setDate(targetDate.getDate() + dayOffset);
   const dateStr = targetDate.toISOString().slice(0,10);
 
-  // daylight hours (5am - 7pm local) that exist in BOTH datasets
+  const dailyIdx = weather.daily?.time?.indexOf(dateStr) ?? -1;
+  const sunrise = dailyIdx>=0 ? weather.daily.sunrise[dailyIdx] : null;
+  const sunset = dailyIdx>=0 ? weather.daily.sunset[dailyIdx] : null;
+
+  // Daylight hours only — spearfishing requires natural light, so clamp the
+  // window to the real sunrise/sunset for this date/location instead of a
+  // fixed 5am-7pm guess, which can fall before sunrise depending on season/latitude.
+  const startHour = sunrise ? (parseInt(sunrise.slice(14,16))>0 ? parseInt(sunrise.slice(11,13))+1 : parseInt(sunrise.slice(11,13))) : 6;
+  const endHour = sunset ? parseInt(sunset.slice(11,13)) : 19;
+
   const dayTimestamps = marine.hourly.time.filter(t=>{
     if(!t.startsWith(dateStr)) return false;
     const hour = parseInt(t.slice(11,13));
-    return hour>=5 && hour<=19 && weatherTimeIdx[t]!==undefined;
+    return hour>=startHour && hour<=endHour && weatherTimeIdx[t]!==undefined;
   });
   if(dayTimestamps.length===0) return null;
 
@@ -949,10 +958,6 @@ function processDay(marine, weather, dayOffset){
   });
 
   const avgScore = hourlyScores.reduce((s,h)=>s+h.score,0)/hourlyScores.length;
-
-  const dailyIdx = weather.daily?.time?.indexOf(dateStr) ?? -1;
-  const sunrise = dailyIdx>=0 ? weather.daily.sunrise[dailyIdx] : null;
-  const sunset = dailyIdx>=0 ? weather.daily.sunset[dailyIdx] : null;
 
   return {
     avgScore: Math.round(avgScore*10)/10,
