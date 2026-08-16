@@ -1260,7 +1260,7 @@ function renderSpotView(spot, data){
 
   bindLogSection(spot, selDay);
 
-  document.getElementById('footerNote').innerHTML = `Marine data: DWD / GFS via Open‑Meteo. Wind &amp; rain: Open‑Meteo Forecast.<br>This is guidance, not a safety device. Always check conditions on site and dive within your limits.`;
+  document.getElementById('footerNote').innerHTML = `This is guidance, not a safety device. Always check conditions on site and dive within your limits.`;
 }
 
 function gaugeMessage(day, cls){
@@ -1370,7 +1370,7 @@ async function buildShareCardBlob(spot, selDay, cls, label, stats){
   ctx.textAlign = 'center';
   ctx.font = '12px "JetBrains Mono", monospace';
   ctx.fillStyle = '#8FA8A8';
-  ctx.fillText('Guidance, not a safety device · open-meteo.com', W/2, H-40);
+  ctx.fillText('Guidance, not a safety device', W/2, H-40);
 
   return new Promise(resolve=>canvas.toBlob(resolve, 'image/png'));
 }
@@ -1458,7 +1458,7 @@ async function loadSpot(spot, opts){
     document.getElementById('mainContent').innerHTML = `
       <div class="empty-state">
         <h2>Couldn't load conditions</h2>
-        <p>An ad blocker or privacy extension may be blocking requests to open-meteo.com. Try disabling it for this site, or open in a private window.</p>
+        <p>An ad blocker or privacy extension may be blocking network requests. Try disabling it for this site, or open in a private window.</p>
         <button class="retry-btn" id="retryBtn">Retry</button>
       </div>`;
     toast('Blocked by browser or an extension');
@@ -1659,7 +1659,7 @@ function init(){
   if(state.spots.length > 0){
     loadSpot(state.spots[0]);
   }
-  document.getElementById('footerNote').innerHTML = `Marine data: DWD / GFS via Open‑Meteo. Wind &amp; rain: Open‑Meteo Forecast.<br>This is guidance, not a safety device. Always check conditions on site and dive within your limits.`;
+  document.getElementById('footerNote').innerHTML = `This is guidance, not a safety device. Always check conditions on site and dive within your limits.`;
 
   // register service worker for PWA installability (best-effort)
   if('serviceWorker' in navigator){
